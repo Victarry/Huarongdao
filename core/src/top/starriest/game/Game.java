@@ -3,239 +3,204 @@ package top.starriest.game;
 import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
-import com.badlogic.gdx.InputProcessor;
-import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
-import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
-import com.badlogic.gdx.graphics.g2d.Animation;
-import com.badlogic.gdx.graphics.g2d.SpriteBatch;
-import com.badlogic.gdx.graphics.g2d.TextureRegion;
-import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.math.Intersector;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector3;
+import com.badlogic.gdx.scenes.scene2d.Actor;
+import com.badlogic.gdx.scenes.scene2d.Stage;
+import com.badlogic.gdx.scenes.scene2d.actions.Actions;
+import com.badlogic.gdx.scenes.scene2d.actions.MoveToAction;
+import com.badlogic.gdx.scenes.scene2d.ui.Button;
+import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
+import com.badlogic.gdx.utils.viewport.StretchViewport;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import static com.badlogic.gdx.graphics.Color.*;
+class Conf{
 
-public class Game extends ApplicationAdapter implements InputProcessor{
+    static final int chessHeight = 50;
+    static final int chessWidth = 50;
+    static final int worldWidth = 200;
+    static final int worldHeight = 350;
 
-	Animation<TextureRegion> animation;
-	Board board;
-	private int chessWidth = 50;
-    private int chessHeight = 50;
-    private ShapeRenderer shapeRenderer;
-    private OrthographicCamera camera;
-    private float start_x;
-    private float start_y;
-    private float end_x;
-    private float end_y;
+    static final int button_step_x = 50;
+    static final int button_step_y = 300;
+}
+
+
+// TODO 添加步数记录
+// TODO 添加时间记录
+// TODO 添加成功判定
+public class Game extends ApplicationAdapter {
+
+    private Board board;
+
     @Override
-	public void create () {
-		shapeRenderer = new ShapeRenderer();
-		board = new Board();
-		camera = new OrthographicCamera();
-		camera.setToOrtho(false, 200, 250);
-        Gdx.input.setInputProcessor(this);
+    public void create() {
+        board = new Board();
+        Gdx.input.setInputProcessor(board);
     }
 
-	@Override
-	public void render () {
-		Gdx.gl.glClearColor(1, 1, 1, 1);
-		Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
-        camera.update();
+    @Override
+    public void render() {
+        float delta = Gdx.graphics.getDeltaTime();
 
-        shapeRenderer.setProjectionMatrix(camera.combined);
-        for(Chess chess: board.chesses){
-            shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
-            shapeRenderer.setColor(chess.c);
-            shapeRenderer.rect(chess.x*chessWidth, chess.y*chessWidth,
-                    chess.width*chessWidth, chess.height * chessHeight);
-            shapeRenderer.end();
-            shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
-            shapeRenderer.setColor(BLACK);
-            shapeRenderer.rect(chess.x*chessWidth, chess.y*chessWidth,
-                    chess.width*chessWidth, chess.height * chessHeight);
-            shapeRenderer.end();
+        Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
+        board.act(delta);
+        board.getViewport().apply();
+        board.draw();
+    }
+
+    public void dispose() {
+
+    }
+}
+
+class Board extends Stage {
+    float start_x;
+    float start_y;
+    float end_x;
+    float end_y;
+    int step_count = 0;
+    List<Chess> chesses;
+    public Chess selected;
+    Button button_steps;
+    Board() {
+        super(new StretchViewport(Conf.worldWidth, Conf.worldHeight));
+
+        Chess zu1 = new Chess("zu",0, 0, 1, 1, new Texture(Gdx.files.internal("zu.png")));
+        Chess zu2 = new Chess("zu",3, 0, 1, 1, new Texture(Gdx.files.internal("zu.png")));
+        Chess zu3 = new Chess("zu",1, 1, 1, 1, new Texture(Gdx.files.internal("zu.png")));
+        Chess zu4 = new Chess("zu",2, 1, 1, 1, new Texture(Gdx.files.internal("zu.png")));
+        Chess ma = new Chess("ma",0, 1, 1, 2, new Texture(Gdx.files.internal("ma.png")));
+        Chess huang = new Chess("huang",3, 1, 1, 2, new Texture(Gdx.files.internal("huang.png")));
+        Chess guan = new Chess("guan",1, 2, 2, 1, new Texture(Gdx.files.internal("guan.png")));
+        Chess zhang = new Chess("zhang",0, 3, 1, 2, new Texture(Gdx.files.internal("zhang.png")));
+        Chess zhao = new Chess("zhao", 3, 3, 1, 2, new Texture(Gdx.files.internal("zhao.png")));
+        Chess cao = new Chess("cao",1, 3, 2, 2, new Texture(Gdx.files.internal("cao.png")));
+        chesses = new ArrayList<Chess>(Arrays.asList(zu1, zu2, zu3, zu4,
+                ma, huang, guan, zhang, zhao, cao));
+        for (Chess chess : chesses) {
+            this.addActor(chess);
         }
+//        button_steps = new Button();
+//        button_steps.setPosition(Conf.button_step_x, Conf.button_step_y);
+//        this.addActor(button_steps);
 
     }
 
-	@Override
-	public void dispose () {
-        shapeRenderer.dispose();
+    void move(int x, int y) {
+        if (selected == null)
+            return;
+        float origin_x = selected.getX();
+        float origin_y = selected.getY();
+        float new_x = selected.getX() + x*Conf.chessWidth;
+        float new_y = selected.getY() + y*Conf.chessHeight;
+        selected.setX(new_x);
+        selected.setY(new_y);
+
+        // 是否合理
+        boolean ok = true;
+
+        // 判断是否在棋盘内
+        if (!inBoard(selected)) {
+            ok = false;
+        }
+        // 判断是否可以移动
+        for(Chess chess : chesses)
+        {
+            if(chess != selected && chess.collision(selected))
+            {
+                ok = false;
+                break;
+            }
+        }
+        // 移动成功
+        selected.setX(origin_x);
+        selected.setY(origin_y);
+        if(ok)
+        {
+            step_count += 1;
+            selected.addAction(Actions.moveTo(new_x, new_y, 0.3f));
+        }
+    }
+
+    boolean inBoard(Chess ch) {
+        if (ch.getX() < 0 || ch.getX() + ch.getWidth() > 4*Conf.chessWidth) {
+            return false;
+        }
+        if (ch.getY() < 0 || ch.getY() + ch.getHeight() > 5*Conf.chessHeight) {
+            return false;
+        }
+        return true;
     }
 
     @Override
-    public boolean touchDown (int screenX, int screenY, int pointer, int button) {
+    public boolean touchDown(int screenX, int screenY, int pointer, int button) {
         // ignore if its not left mouse button or first touch pointer
         if (button != Input.Buttons.LEFT || pointer > 0)
             return false;
         Vector3 touchPos = new Vector3();
         touchPos.set(Gdx.input.getX(), Gdx.input.getY(), 0);
-        camera.unproject(touchPos);
+        getCamera().unproject(touchPos);
         start_x = touchPos.x;
         start_y = touchPos.y;
-        board.selectChess((int) (start_x/chessWidth), (int)(start_y/chessHeight));
+        selected = (Chess) hit(start_x, start_y, true);
         return true;
-    }
-
-    @Override
-    public boolean keyDown(int keycode) {
-        return false;
-    }
-
-    @Override
-    public boolean keyUp(int keycode) {
-        return false;
-    }
-
-    @Override
-    public boolean touchDragged(int screenX, int screenY, int pointer) {
-
-        return false;
     }
 
     @Override
     public boolean touchUp(int screenX, int screenY, int pointer, int button) {
         Vector3 touchPos = new Vector3();
         touchPos.set(Gdx.input.getX(), Gdx.input.getY(), 0);
-        camera.unproject(touchPos);
+        getCamera().unproject(touchPos);
         end_x = touchPos.x;
         end_y = touchPos.y;
         float x = end_x - start_x;
         float y = end_y - start_y;
-        if(Math.abs(x) > Math.abs(y))
-        {
-            if(x > 0)
-            {
-                board.move(1, 0);
-            }
-            else
-                board.move(-1, 0);
-        }
-        else
-        {
-            if(y > 0)
-            {
-                board.move(0, 1);
-            }
-            else
-                board.move(0, -1);
-        }
-        return false;
-    }
-
-    @Override
-    public boolean keyTyped(char character) {
-        return false;
-    }
-
-    @Override
-    public boolean mouseMoved(int screenX, int screenY) {
-        return false;
-    }
-
-    @Override
-    public boolean scrolled(int amount) {
-        return false;
-    }
-}
-
-class Board{
-    List<Chess> chesses;
-    Chess selected;
-    Board() {
-        Chess zu1 = new Chess(0, 0, 1, 1, YELLOW);
-        Chess zu2 = new Chess(3, 0, 1, 1, YELLOW);
-        Chess zu3 = new Chess(1, 1, 1, 1, YELLOW);
-        Chess zu4 = new Chess(2, 1, 1, 1, YELLOW);
-        Chess ma = new Chess(0,  1, 1, 2, GREEN);
-        Chess huang = new Chess(3,  1, 1, 2, GREEN);
-        Chess guan = new Chess(1, 2, 2, 1, RED);
-        Chess zhang = new Chess(0, 3, 1, 2, BLUE);
-        Chess zhao = new Chess(3, 3, 1, 2, BLUE);
-        Chess cao = new Chess(1, 3, 2, 2, PURPLE);
-        chesses = new ArrayList<Chess>(Arrays.asList(zu1, zu2, zu3, zu4,
-                ma, huang, guan, zhang, zhao, cao));
-    }
-    void selectChess(int x, int y)
-    {
-        for(Chess chess: chesses)
-        {
-            if(chess.contain(x, y))
-            {
-                selected = chess;
-                return;
-            }
-        }
-    }
-
-    void move(int x, int y)
-    {
-        selected.x += x;
-        selected.y += y;
-        Gdx.app.log("move direction", Integer.toString(x) + ':' + Integer.toString(y));
-
-        if(!selected.inBoard())
-        {
-            selected.x -= x;
-            selected.y -= y;
-            Gdx.app.log("Can't move", "out of board");
-            return;
-        }
-        for(Chess chess : chesses)
-        {
-            if(!chess.equals(selected))
-            {
-                if(chess.collision(selected))
-                {
-                    selected.x -= x;
-                    selected.y -= y;
-                    return;
-                }
-            }
-        }
-    }
-}
-
-class Chess{
-    int x;
-    int y;
-    int width;
-    int height;
-    Color c;
-    Chess(int x, int y, int width, int height, Color c) {
-        this.x = x;
-        this.y = y;
-        this.width = width;
-        this.height = height;
-        this.c = c;
-    }
-    boolean contain(int xx, int yy)
-    {
-        return xx >= x && xx < x + width && yy >= y && yy < y + height;
-    }
-    boolean collision(Chess other)
-    {
-        Rectangle r1 = new Rectangle(this.x, this.y, this.width, this.height);
-        Rectangle r2 = new Rectangle(other.x, other.y, other.width, other.height);
-
-        return Intersector.overlaps(r1, r2);
-    }
-
-    boolean inBoard() {
-        if(x < 0 || x + width > 4){
-            return false;
-        }
-        if(y < 0 || y + height > 5)
-        {
-            return false;
+        if (Math.abs(x) > Math.abs(y)) {
+            if (x > 0) {
+                move(1, 0);
+            } else
+                move(-1, 0);
+        } else {
+            if (y > 0) {
+                move(0, 1);
+            } else
+                move(0, -1);
         }
         return true;
+    }
+}
+
+class Chess extends Actor{
+
+    Texture texture;
+    Chess(String name, int x, int y, int width, int height, Texture t) {
+        setName(name);
+        setX(x*Conf.chessWidth);
+        setY(y*Conf.chessHeight);
+        setWidth(width*Conf.chessWidth);
+        setHeight(height*Conf.chessHeight);
+        this.texture = t;
+    }
+
+
+    @Override
+    public void draw(Batch batch, float parentAlpha) {
+        batch.draw(texture, getX(), getY(), getWidth(), getHeight());
+    }
+
+    boolean collision(Chess other)
+    {
+        Rectangle r1 = new Rectangle(getX(), getY(), getWidth(), getHeight());
+        Rectangle r2 = new Rectangle(other.getX(), other.getY(), other.getWidth(), other.getHeight());
+
+        return Intersector.overlaps(r1, r2);
     }
 }
