@@ -5,9 +5,10 @@
     <application
             android:allowBackup="true"
             android:appCategory="game"
-            android:icon="@drawable/ic_launcher"
+            android:icon="@mipmap/starry"
             android:isGame="true"
             android:label="@string/app_name"
+            android:logo="@mipmap/starry"
             android:theme="@style/GdxTheme">
         <activity
                 android:name=".AndroidLauncher"
